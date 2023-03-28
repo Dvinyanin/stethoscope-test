@@ -1,13 +1,14 @@
-import { useEffect, useReducer } from "react";
+import { useEffect } from "react";
 
-export const stethoscopeGain = {
-  default: 1,
-  min: 1,
-  max: 40,
-};
-
-const audioContext = new AudioContext();
-const gainNode = audioContext.createGain();
+export const audioContext = new AudioContext({ sampleRate: 5000 });
+export const gainNode = audioContext.createGain();
+gainNode.gain.value = 0;
+export const analyser = audioContext.createAnalyser();
+analyser.fftSize = 2048;
+analyser.maxDecibels = -30;
+analyser.minDecibels = -200;
+console.log(analyser.maxDecibels)
+console.log(analyser.minDecibels)
 
 export const createDefaultFilter = () => {
   const filter = audioContext.createBiquadFilter();
@@ -24,23 +25,22 @@ export const useStethoscopeFilter = (
       return;
     }
     const source = audioContext.createMediaStreamSource(stream);
-    const gainNode = audioContext.createGain();
-    gainNode.gain.value = stethoscopeGain.default;
 
-    gainNode.connect(audioContext.destination);
+    gainNode.connect(analyser);
     const lastFilter = biquadFilters.reduce((destination, biquadFilter) => {
       biquadFilter.connect(destination);
       return biquadFilter;
     }, gainNode);
     source.connect(lastFilter);
+    analyser.connect(audioContext.destination);
 
-    audioContext.resume()
+    audioContext.resume();
     return () => {
       audioContext.destination.disconnect();
       gainNode.disconnect();
       source.disconnect();
+      analyser.disconnect();
       biquadFilters.forEach((biquadFilter) => biquadFilter.disconnect());
     };
   }, [stream, biquadFilters]);
-  return useReducer((_: number, gain: number) => (gainNode.gain.value = gain), gainNode.gain.value);
 };

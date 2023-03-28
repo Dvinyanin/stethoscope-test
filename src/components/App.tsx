@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 
 import Filter from "./Filter";
-import { createDefaultFilter, useStethoscopeFilter } from "../utils/filter";
+import Analyser from "./Analizer"
+import { createDefaultFilter, gainNode, useStethoscopeFilter } from "../utils/filter";
 import { useRef } from "react";
 
 function App() {
@@ -19,8 +20,18 @@ function App() {
     }
     audioRef.current.srcObject = stream
   }, [stream])
-  const audioRef = useRef<HTMLAudioElement>(null)
-  const [gain, setGain] = useStethoscopeFilter(filterNodes, stream);
+  const audioRef = useRef<HTMLAudioElement>(null);
+  useStethoscopeFilter(filterNodes, stream);
+  const [gain, setGain] = useState(1);
+  const [muted, setMuted] = useState(true);
+
+  useEffect(() => {
+    if (muted) {
+      gainNode.gain.value = 0;
+    } else {
+      gainNode.gain.value = gain;
+    }
+  }, [gain, muted])
 
   const handleAddFilter = () => {
     setFilterNodes([...filterNodes, createDefaultFilter()]);
@@ -32,14 +43,17 @@ function App() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", width: "fit-content" }}>
+      <Analyser />
       <div style={{ padding: 5 }}>
         Common gain
         <input
+          disabled={muted}
           style={{ width: 100, margin: "0 5px" }}
           type="number"
           value={gain}
           onChange={({ target }) => setGain(Number(target.value))}
         />
+        <button style={{ width: 100 }} onClick={() => setMuted(s => !s)}>{muted ? 'Unmute' : 'Mute'}</button>
         <button style={{ width: 100 }} onClick={handleAddFilter}>Add</button>
       </div>
       {filterNodes.map((filter, index, { length }) => (
@@ -49,7 +63,6 @@ function App() {
           onRemove={() => handleRemoveFilter(index)}
         />
       ))}
-      <audio ref={audioRef} autoPlay muted/>
     </div>
   );
 }
